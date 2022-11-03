@@ -4,37 +4,22 @@
     // Weitere Informationen finden Sie unter https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-    {
-        "name": "Entities.Manager",
-        "program": "${workspaceFolder}/dist/entities/test/manager.js",
-        "request": "launch",
-        "skipFiles": [
-            "<node_internals>/**"
-        ],
-        "type": "node"
-    },
-    {
-        "name": "Streams.Parser",
-        "program": "${workspaceFolder}/dist/streams/test/parser.js",
-        "request": "launch",
-        "skipFiles": [
-            "<node_internals>/**"
-        ],
-        "type": "node"
-    },
-    {
-        "name": "Server",
-        "program": "${workspaceFolder}/dist/server.js",
-        "request": "launch",
-        "skipFiles": [
-            "<node_internals>/**"
-        ],
-        "type": "node"
-    },
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Program",
+            "name": "Server",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}\\src\\server.ts",
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Client",
             "skipFiles": [
                 "<node_internals>/**"
             ],
