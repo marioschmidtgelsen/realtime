@@ -108,7 +108,7 @@ export class Client {
     async connect(port: number) { return new Promise<void>(resolve => this.socket.connect({ port }, resolve)) }
     invoke<T>(method: string, ...params: any[]) {
         return new Promise<T>((resolve, reject) => {
-            const id = this.id++
+            const id = ++this.id
             const request: RequestMessage = { jsonrpc: "2.0", id, method, params }
             const encoded = JSON.stringify(request).concat("\r\n")
             const data = Buffer.from(encoded)
