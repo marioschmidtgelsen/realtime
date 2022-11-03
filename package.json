@@ -1,0 +1,16 @@
+{
+  "name": "@edgestream/realtime",
+  "version": "1.0.0",
+  "description": "Realtime API",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "serve": "node dist/server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "^18.11.3",
+    "typescript": "^4.9.0-dev.20221021"
+  }
+}
