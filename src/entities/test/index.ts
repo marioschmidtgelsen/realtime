@@ -6,7 +6,7 @@ async function testManager() {
     const isMock = (value: any): value is Mock => typeof value == "object" && "key" in value && typeof value.key == "number" && "foo" in value && typeof value.foo == "string"
     const keyGenerator: Entities.KeyGenerator = (entity) => isMock(entity) ? entity.key : entity
     const options = { keyGenerator }
-    const manager = new Entities.Manager(options)
+    const manager = Entities.createManager(options)
     const attached: Array<Entities.AttachedEventData> = [], detached: Array<Entities.DetachedEventData> = [], merged: Array<Entities.MergedEventData> = []
     manager.attached.on((ev) => attached.push(ev.data))
     manager.detached.on((ev) => detached.push(ev.data))

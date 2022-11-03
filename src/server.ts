@@ -7,7 +7,7 @@ async function main() {
     
     const keyGenerator: Entities.KeyGenerator = (entity) => isMock(entity) ? entity.key : entity
     const options = { keyGenerator }
-    const manager = new Entities.Manager(options)
+    const manager = Entities.createManager(options)
     const entity = manager.attach({ key: 42, foo: "foo" })
     console.info(entity)
     manager.merged.on((ev) => console.info(entity))

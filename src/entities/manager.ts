@@ -1,41 +1,54 @@
 import * as Events from "../events/index"
 
 export type KeyGenerator = <T extends object>(entity: Partial<T>) => any
-export type ProxyGenerator = <T extends object>(manager: Manager, entity: T, key: any) => T
+export type EntityGenerator = <T extends object>(manager: Manager, entity: T, key: any) => T
 export type MergeStrategy = <T extends object>(manager: Manager, entity: T, changes: Partial<T>) => void
 export interface Options {
     readonly keyGenerator: KeyGenerator
-    readonly proxyGenerator?: ProxyGenerator
+    readonly entityGenerator?: EntityGenerator
     readonly mergeStrategy?: MergeStrategy
 }
 export type AttachedEventData = { entity: object }
 export type DetachedEventData = { key: any }
 export type MergedEventData = { key: any, changes: object }
-export class Manager {
+export interface Manager {
+    readonly attached: Events.Event<AttachedEventData, this>
+    readonly detached: Events.Event<DetachedEventData, this>
+    readonly merged: Events.Event<MergedEventData, this>
+    attach<T extends object>(entity: T): T
+    detach<T extends object>(entity: T): void
+    find<T extends object>(key: any): T | undefined
+    merge<T extends object>(key: any, changes: Partial<T>): void
+}
+export function createManager(options: Options) {
+    return new EntityManager(options)
+}
+
+class EntityManager implements Manager {
     #entities = new Map<any, object>()
     #attached = new Events.Emitter<AttachedEventData>("attached", this)
     #detached = new Events.Emitter<DetachedEventData>("detached", this)
     #merged = new Events.Emitter<MergedEventData>("merged", this)
-    readonly keyGenerator: KeyGenerator
-    readonly proxyGenerator: ProxyGenerator
-    readonly mergeStrategy: MergeStrategy
+    #keyGenerator: KeyGenerator
+    #entityGenerator: EntityGenerator
+    #mergeStrategy: MergeStrategy
     constructor(options: Options) {
-        this.keyGenerator = options.keyGenerator
-        this.proxyGenerator = options.proxyGenerator || createEntityProxy
-        this.mergeStrategy = options.mergeStrategy || mergeEntityChanges
+        this.#keyGenerator = options.keyGenerator
+        this.#entityGenerator = options.entityGenerator || createEntityProxy
+        this.#mergeStrategy = options.mergeStrategy || mergeEntityChanges
     }
     get attached(): Events.Event<AttachedEventData, this> { return this.#attached }
     get detached(): Events.Event<DetachedEventData, this> { return this.#detached }
     get merged(): Events.Event<MergedEventData, this> { return this.#merged }
     attach<T extends object>(entity: T): T {
         // Generate an entity key
-        const key = this.keyGenerator(entity)
+        const key = this.#keyGenerator(entity)
         // Check if object is not attached already
         if (this.#entities.has(key)) throw Error("Entity already attached")
         // Add the object as a managed entity
         this.#entities.set(key, entity)
         // Wrap the entity into an entity proxy
-        const proxy = this.proxyGenerator(this, entity, key)
+        const proxy = this.#entityGenerator(this, entity, key)
         // Emit the "attach" event
         this.#attached.emit({ entity: proxy })
         // Return the entity proxy
@@ -43,7 +56,7 @@ export class Manager {
     }
     detach<T extends object>(entity: T): void {
         // Generate the entity key
-        const key = this.keyGenerator(entity)
+        const key = this.#keyGenerator(entity)
         // Check if entity is attached
         if (!this.#entities.has(key)) throw Error("Entity not attached")
         // Delete the managed entity
@@ -55,17 +68,17 @@ export class Manager {
         // Try to get managed entity
         const entity = this.#entities.get(key) as T
         // Wrap the entity into an entity proxy
-        const proxy = this.proxyGenerator(this, entity, key)
+        const proxy = this.#entityGenerator(this, entity, key)
         // Return the entity proxy
         return proxy
     }
-    merge<T extends object>(key: any, changes: Partial<T>) {
+    merge<T extends object>(key: any, changes: Partial<T>): void {
         // Try to get managed entity
         const entity = this.#entities.get(key)
         // Check if entity is attached
         if (!entity) throw Error("Entity not attached")
         // Merge changes into managed entity
-        this.mergeStrategy(this, entity, changes)
+        this.#mergeStrategy(this, entity, changes)
         // Emit the "merge" event
         this.#merged.emit({ key, changes })
     }
