@@ -7,26 +7,20 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Events (test)",
+            "program": "${workspaceFolder}/src/events/test/index.ts",
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Server",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
             "program": "${workspaceFolder}\\src\\server.ts",
-            "outFiles": [
-                "${workspaceFolder}/**/*.js"
-            ]
         },
         {
             "type": "node",
             "request": "launch",
             "name": "Client",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
             "program": "${workspaceFolder}\\src\\index.ts",
-            "outFiles": [
-                "${workspaceFolder}/**/*.js"
-            ]
         }
     ]
 }
