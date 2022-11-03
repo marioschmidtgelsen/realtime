@@ -7,10 +7,10 @@ async function testManager() {
     const keyGenerator: Entities.KeyGenerator = (entity) => isMock(entity) ? entity.key : entity
     const options = { keyGenerator }
     const manager = new Entities.Manager(options)
-    const attached: Array<{ entity: object }> = [], detached: Array<{ key: any }> = [], merged: Array<{ key: any, changes: object }> = []
-    manager.on("attach", (entity) => attached.push({ entity }))
-    manager.on("detach", (key) => detached.push({ key }))
-    manager.on("merge", (key, changes) => merged.push({ key, changes}))
+    const attached: Array<Entities.AttachedEventData> = [], detached: Array<Entities.DetachedEventData> = [], merged: Array<Entities.MergedEventData> = []
+    manager.attached.on((ev) => attached.push(ev.data))
+    manager.detached.on((ev) => detached.push(ev.data))
+    manager.merged.on((ev) => merged.push(ev.data))
     const entity = manager.attach({ key: 42, foo: "bar" })
     assert.deepStrictEqual(attached, [{ entity: { key: 42, foo: "bar" }}])
     const found = manager.find(42)

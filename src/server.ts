@@ -10,7 +10,7 @@ async function main() {
     const manager = new Entities.Manager(options)
     const entity = manager.attach({ key: 42, foo: "foo" })
     console.info(entity)
-    manager.on("merge", (key, changes) => console.info(entity))
+    manager.merged.on((ev) => console.info(entity))
     
     const server = new Remotes.JSONRPC.Server()
     server.expose((key) => manager.find(key), "find")

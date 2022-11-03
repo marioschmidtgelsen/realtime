@@ -7,6 +7,12 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Entities (test)",
+            "program": "${workspaceFolder}/src/entities/test/index.ts",
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Events (test)",
             "program": "${workspaceFolder}/src/events/test/index.ts",
         },
