@@ -94,6 +94,7 @@ export type ResponseEventListener = (response: ResponseMessage) => any
 export class Client {
     private listener = { "response": new Map<ResponseEventListener, { once?: true }>() }
     private socket: net.Socket
+    private id = 0
     constructor(options: ClientOptions = {}) {
         this.socket = options.socket || new net.Socket()
         this.socket.on("data", (data) => {
@@ -107,10 +108,11 @@ export class Client {
     async connect(port: number) { return new Promise<void>(resolve => this.socket.connect({ port }, resolve)) }
     invoke<T>(method: string, ...params: any[]) {
         return new Promise<T>((resolve, reject) => {
-            const request: RequestMessage = { jsonrpc: "2.0", id: 1, method, params }
-            const encoded = JSON.stringify(request)
+            const id = this.id++
+            const request: RequestMessage = { jsonrpc: "2.0", id, method, params }
+            const encoded = JSON.stringify(request).concat("\r\n")
             const data = Buffer.from(encoded)
-            this.once("response", (response) => isSuccessMessage(response) ? resolve(response.result) : reject())
+            this.once("response", (response) => isSuccessMessage(response) ? response.id == id ? resolve(response.result) : undefined : reject())
             this.write(data)
         })
     }
