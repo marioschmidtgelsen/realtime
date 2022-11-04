@@ -1,5 +1,5 @@
-import { createEmitter, EventSource } from "../events/index"
-import { ReadableWritablePair, ReadableStream, UnderlyingSource, ReadableStreamDefaultController, WritableStream, UnderlyingSink } from "../streams/index"
+import { createEmitter, EventSource } from "../events"
+import { ReadableWritablePair, ReadableStream, UnderlyingSource, ReadableStreamDefaultController, WritableStream, UnderlyingSink } from "../streams"
 import * as net from "net"
 
 export interface ServerOptions {

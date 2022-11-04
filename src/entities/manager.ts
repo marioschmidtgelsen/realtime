@@ -1,4 +1,4 @@
-import { createEmitter, EventSource } from "../events/index"
+import { createEmitter, EventSource } from "../events"
 
 export type KeyGenerator = <T extends object>(entity: Partial<T>) => any
 export type EntityGenerator = <T extends object>(manager: EntityManager, entity: T, key: any) => T

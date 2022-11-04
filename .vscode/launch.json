@@ -25,6 +25,12 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Test",
+            "program": "${workspaceFolder}/src/test/index.ts",
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Server",
             "program": "${workspaceFolder}\\src\\server.ts",
         },

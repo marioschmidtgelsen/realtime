@@ -1,9 +1,14 @@
-import * as Remotes from "./remotes/index"
+import { createClient } from "./remotes/jsonrpc"
 
 async function main() {
-    const client = new Remotes.JSONRPC.Client()
-    await client.connect(3000)
-    await client.invoke("merge", 42, { foo: "bar" })
+    // Create an RPC client
+    const client = createClient({ address: "tcp://[::]:3000" })
+    // Connect to RPC server
+    await client.connect()
+    // Invoke remote entity manager's "find" method
+    const result = await client.invoke("find", 42)
+    console.info(result)
+    // Cleanup RPC client
     await client.close()
 }
 
