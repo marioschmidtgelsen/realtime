@@ -31,13 +31,7 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Server",
-            "program": "${workspaceFolder}\\src\\server.ts",
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "Client",
+            "name": "Launch",
             "program": "${workspaceFolder}\\src\\index.ts",
         }
     ]
