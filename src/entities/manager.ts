@@ -1,9 +1,9 @@
-import * as Events from "../events/index"
+import { createEmitter, EventSource } from "../events/index"
 
 export type KeyGenerator = <T extends object>(entity: Partial<T>) => any
-export type EntityGenerator = <T extends object>(manager: Manager, entity: T, key: any) => T
-export type MergeStrategy = <T extends object>(manager: Manager, entity: T, changes: Partial<T>) => void
-export interface Options {
+export type EntityGenerator = <T extends object>(manager: EntityManager, entity: T, key: any) => T
+export type MergeStrategy = <T extends object>(manager: EntityManager, entity: T, changes: Partial<T>) => void
+export interface ManagerOptions {
     readonly keyGenerator: KeyGenerator
     readonly entityGenerator?: EntityGenerator
     readonly mergeStrategy?: MergeStrategy
@@ -11,35 +11,35 @@ export interface Options {
 export type AttachedEventData = { entity: object }
 export type DetachedEventData = { key: any }
 export type MergedEventData = { key: any, changes: object }
-export interface Manager {
-    readonly attached: Events.Event<AttachedEventData, this>
-    readonly detached: Events.Event<DetachedEventData, this>
-    readonly merged: Events.Event<MergedEventData, this>
+export interface EntityManager {
+    attached: EventSource<AttachedEventData, this>
+    detached: EventSource<DetachedEventData, this>
+    merged: EventSource<MergedEventData, this>
     attach<T extends object>(entity: T): T
     detach<T extends object>(entity: T): void
     find<T extends object>(key: any): T | undefined
     merge<T extends object>(key: any, changes: Partial<T>): void
 }
-export function createManager(options: Options) {
-    return new EntityManager(options)
+export function createManager(options: ManagerOptions) {
+    return new EntityManagerImpl(options)
 }
 
-class EntityManager implements Manager {
+class EntityManagerImpl implements EntityManager {
     #entities = new Map<any, object>()
-    #attached = new Events.Emitter<AttachedEventData>("attached", this)
-    #detached = new Events.Emitter<DetachedEventData>("detached", this)
-    #merged = new Events.Emitter<MergedEventData>("merged", this)
+    #attached = createEmitter<AttachedEventData>("attached", this)
+    #detached = createEmitter<DetachedEventData>("detached", this)
+    #merged = createEmitter<MergedEventData>("merged", this)
     #keyGenerator: KeyGenerator
     #entityGenerator: EntityGenerator
     #mergeStrategy: MergeStrategy
-    constructor(options: Options) {
+    constructor(options: ManagerOptions) {
         this.#keyGenerator = options.keyGenerator
-        this.#entityGenerator = options.entityGenerator || createEntityProxy
-        this.#mergeStrategy = options.mergeStrategy || mergeEntityChanges
+        this.#entityGenerator = options.entityGenerator || EntityManagerImpl.createEntityProxy
+        this.#mergeStrategy = options.mergeStrategy || EntityManagerImpl.mergeEntityChanges
     }
-    get attached(): Events.Event<AttachedEventData, this> { return this.#attached }
-    get detached(): Events.Event<DetachedEventData, this> { return this.#detached }
-    get merged(): Events.Event<MergedEventData, this> { return this.#merged }
+    get attached(): EventSource<AttachedEventData, this> { return this.#attached }
+    get detached(): EventSource<DetachedEventData, this> { return this.#detached }
+    get merged(): EventSource<MergedEventData, this> { return this.#merged }
     attach<T extends object>(entity: T): T {
         // Generate an entity key
         const key = this.#keyGenerator(entity)
@@ -82,20 +82,20 @@ class EntityManager implements Manager {
         // Emit the "merge" event
         this.#merged.emit({ key, changes })
     }
+    private static createEntityProxy<T extends object>(manager: EntityManager, entity: T, key: any): T {
+        const changeTracker = new ChangeTrackerImpl(manager, key)
+        return new Proxy<T>(entity, changeTracker)
+    }
+    private static mergeEntityChanges<T extends object>(manager: EntityManager, entity: T, changes: Partial<T>) {
+        for (const [propertyKey, value] of Object.entries(changes)) {
+            if (!Reflect.set(entity, propertyKey, value)) throw Error("Illegal access")
+        }
+    }
 }
-class ChangeTracker<T extends object> implements ProxyHandler<T> {
-    constructor(protected manager: Manager, protected key: any) { }
+class ChangeTrackerImpl<T extends object> implements ProxyHandler<T> {
+    constructor(protected manager: EntityManager, protected key: any) { }
     set(target: T, p: string | symbol, newValue: any, receiver: any): boolean {
         this.manager.merge(this.key, { [p]: newValue })
         return true
-    }
-}
-function createEntityProxy<T extends object>(manager: Manager, entity: T, key: any): T {
-    const changeTracker = new ChangeTracker(manager, key)
-    return new Proxy<T>(entity, changeTracker)
-}
-function mergeEntityChanges<T extends object>(manager: Manager, entity: T, changes: Partial<T>) {
-    for (const [propertyKey, value] of Object.entries(changes)) {
-        if (!Reflect.set(entity, propertyKey, value)) throw Error("Illegal access")
     }
 }

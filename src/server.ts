@@ -1,13 +1,13 @@
-import * as Entities from "./entities/index"
+import { createManager, KeyGenerator } from "./entities/index"
 import * as Remotes from "./remotes/index"
 
 async function main() {
     interface Mock { key: number, foo: string }
     const isMock = (value: any): value is Mock => typeof value == "object" && "key" in value && typeof value.key == "number" && "foo" in value && typeof value.foo == "string"
     
-    const keyGenerator: Entities.KeyGenerator = (entity) => isMock(entity) ? entity.key : entity
+    const keyGenerator: KeyGenerator = (entity) => isMock(entity) ? entity.key : entity
     const options = { keyGenerator }
-    const manager = Entities.createManager(options)
+    const manager = createManager(options)
     const entity = manager.attach({ key: 42, foo: "foo" })
     console.info(entity)
     manager.merged.on((ev) => console.info(entity))

@@ -19,6 +19,12 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Transports (test)",
+            "program": "${workspaceFolder}/src/transports/test/index.ts",
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Server",
             "program": "${workspaceFolder}\\src\\server.ts",
         },

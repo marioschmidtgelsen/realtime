@@ -1,15 +1,15 @@
-import * as Events from "../index"
+import { createEmitter, EventSource, EventMessage, EventListener } from "../index"
 import * as assert from "assert"
 
 async function test() {
     class Channel {
-        #message = new Events.Emitter("message", this)
+        #message = createEmitter("message", this)
         constructor(readonly name: string) { }
-        get message(): Events.Event<string, this> { return this.#message }
+        get message(): EventSource<string, this> { return this.#message }
         post(data: string) { this.#message.emit(data) }
     }
-    var emitted: Array<Events.Message<string, Channel>> = []
-    const listener: Events.Listener<string, Channel> = (data) => emitted.push(data)
+    var emitted: Array<EventMessage<string, Channel>> = []
+    const listener: EventListener<string, Channel> = (data) => emitted.push(data)
     const general = new Channel("general")
     const help = new Channel("help")
     general.message.on(listener)
