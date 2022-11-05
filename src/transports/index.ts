@@ -18,6 +18,7 @@ export interface ClientOptions {
 }
 export interface Client {
     readonly address: string
+    connection: EventSource<Connection, this>
     connect(): Promise<Connection>
 }
 export interface Connection extends ReadableWritablePair {
@@ -64,6 +65,7 @@ class TcpClient implements Client {
     constructor(options: ClientOptions) {
         this.#address = options.address
         this.#socket = options.socket || new net.Socket()
+        this.#socket.on("connect", () => this.#connection.emit(new TcpConnection(this.#socket)))
     }
     get address() { return this.#address }
     async close() {
@@ -71,7 +73,10 @@ class TcpClient implements Client {
     }
     get connection(): EventSource<Connection, this> { return this.#connection }
     async connect() {
-        return new Promise<Connection>(resolve => this.#socket.connect(this.getConnectOptions(), () => resolve(new TcpConnection(this.#socket))))
+        return new Promise<Connection>(resolve => {
+            this.#connection.once(({ data }) => resolve(data))
+            this.#socket.connect(this.getConnectOptions())
+        })
     }
     protected getConnectOptions() {
         return { port: parseInt(new URL(this.#address).port) }

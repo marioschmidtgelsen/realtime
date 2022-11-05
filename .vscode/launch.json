@@ -25,6 +25,12 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Remotes/JSONRPC (test)",
+            "program": "${workspaceFolder}/src/remotes/jsonrpc/test/index.ts",
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Test",
             "program": "${workspaceFolder}/src/test/index.ts",
         },

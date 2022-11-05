@@ -1,7 +1,6 @@
-import { createEmitter, EventSource } from "../../events"
-
-export { createClient } from "./client"
-export { createServer } from "./server"
+import * as Remotes from "../../remotes"
+import * as JSON from "../JSON"
+import { TextDecoderStream, TextEncoderStream, ReadableWritablePair, TransformStream } from "../../streams"
 
 export interface MessageHeader {
     readonly jsonrpc: '2.0'
@@ -15,6 +14,10 @@ export interface RequestMessage extends NotificationMessage {
 }
 export interface SuccessMessage extends MessageHeader {
     readonly result: any
+    readonly id: number | string
+}
+export interface FunctionMessage extends MessageHeader {
+    readonly method: string
     readonly id: number | string
 }
 export enum ErrorCode {
@@ -49,6 +52,11 @@ export function isSuccessMessage(value: any): value is SuccessMessage {
         && isMessageHeader(value)
         && !isErrorMessage(value)
 }
+export function isFunctionMessage(value: any): value is FunctionMessage {
+    return value.method && (typeof value.method == "string") && (value.method.length > 0)
+        && value.id && (typeof value.id == "number" || typeof value.id == "string")
+        && isMessageHeader(value)
+}
 export function isErrorMessage(value: any): value is ErrorMessage {
     return value.code && typeof value.code == "number"
         && value.message && typeof value.message == "string"
@@ -63,28 +71,42 @@ export function isMessage(value: any): value is Message {
         || isRequestMessage(value)
         || isResponseMessage(value)
 }
-export type ResultEventData = { id: string | number, result: any }
-export type Method<T = any> = (...args: any[]) => T
-export interface Endpoint {
-    expose<T>(method: Method<T>, name?: string): void
-    invoke(name: string, ...params: any[]): void
-    readonly result: EventSource<ResultEventData>
-}
-export function createEndpoint(): Endpoint {
-    return new JSONRPCEndpoint()
-}
-class JSONRPCEndpoint {
-    private methods = new Map<string, Method>()
-    private id = 0
-    #result = createEmitter<ResultEventData>("result", this)
-    expose<T>(method: Method<T>, name = method.name) {
-        this.methods.set(name, method)
+export class Consumer extends Remotes.AbstractConsumer<RequestMessage, ResponseMessage> {
+    #identification = 0
+    channel({ readable, writable }: ReadableWritablePair): Promise<void> {
+        return readable
+        .pipeThrough(new TextDecoderStream())
+        .pipeThrough(new JSON.DecoderStream<ResponseMessage>())
+        .pipeThrough(new TransformStream(this))
+        .pipeThrough(new JSON.EncoderStream<RequestMessage>())
+        .pipeThrough(new TextEncoderStream())
+        .pipeTo(writable)
     }
-    invoke(name: string, ...params: any[]) {
-        const method = this.methods.get(name)!
-        const id = ++this.id
-        const result = method.call(undefined, ...params)
-        this.#result.emit({ id, result })
+    protected generateIdentification(): number {
+        return ++this.#identification
     }
-    get result(): EventSource<ResultEventData> { return this.#result }
+    protected encodeRequestMessage({ id, method, params }: Remotes.Invocation): RequestMessage {
+        return { jsonrpc: "2.0", id, method, params }
+    }
+    protected decodeResponseMessage(response: ResponseMessage): Remotes.Result {
+        if (isSuccessMessage(response)) return response
+        throw Error(`Unexpected response: ${response}`)
+    }
+}
+export class Provider extends Remotes.AbstractProvider<RequestMessage, ResponseMessage> {
+    channel({ readable, writable }: ReadableWritablePair): Promise<void> {
+        return readable
+        .pipeThrough(new TextDecoderStream())
+        .pipeThrough(new JSON.DecoderStream<RequestMessage>())
+        .pipeThrough(new TransformStream(this))
+        .pipeThrough(new JSON.EncoderStream<ResponseMessage>())
+        .pipeThrough(new TextEncoderStream())
+        .pipeTo(writable)
+    }
+    protected decodeRequestMessage({ id, method, params }: RequestMessage): Remotes.Invocation {
+        return { id, method, params }
+    }
+    protected encodeResponseMessage({ id, result }: Remotes.Result<any>): ResponseMessage {
+        return { jsonrpc: "2.0", id, result }
+    }
 }
