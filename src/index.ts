@@ -13,12 +13,12 @@ async function main() {
     const consumer = new Consumer()
     // Create a TCP client and connect server
     const client = createClient({ address: server.address, endpoint: consumer })
-    const connection = await client.connect()
+    await client.connect()
     // Invoke remote method
     const result = await consumer.invoke("foo")
     console.info(result)
-    // Cleanup connection and server
-    await connection.close()
+    // Cleanup connections
+    await client.close()
     await server.close()
 }
 

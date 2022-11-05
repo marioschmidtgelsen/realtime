@@ -21,6 +21,7 @@ export interface ClientOptions {
 export interface Client {
     readonly address: string
     connection: EventSource<Connection, this>
+    close(): Promise<void>
     connect(): Promise<Connection>
 }
 export interface Connection extends ReadableWritablePair {
@@ -68,7 +69,6 @@ class TcpServer implements Server {
 export function createServer(options: ServerOptions = {}): Server {
     return new TcpServer(options)
 }
-
 class TcpClient implements Client {
     #address: string
     #endpoint?: Endpoint
@@ -102,7 +102,6 @@ class TcpClient implements Client {
 export function createClient(options: ClientOptions): Client {
     return new TcpClient(options)
 }
-
 class TcpConnection implements Connection {
     #socket: net.Socket
     #readable: TcpReadableStream
