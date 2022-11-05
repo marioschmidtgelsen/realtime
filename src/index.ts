@@ -7,14 +7,12 @@ async function main() {
     const provider = new Provider()
     provider.expose(foo)
     // Create a TCP server and start listening
-    const server = createServer()
-    server.connection.on(({ data }) => provider.channel(data))
+    const server = createServer({ address: "tcp://[::]", endpoint: provider })
     await server.listen()
     // Create a JSONRPC consumer
     const consumer = new Consumer()
     // Create a TCP client and connect server
-    const client = createClient({ address: server.address })
-    client.connection.on(({ data }) => consumer.channel(data))
+    const client = createClient({ address: server.address, endpoint: consumer })
     const connection = await client.connect()
     // Invoke remote method
     const result = await consumer.invoke("foo")

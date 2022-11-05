@@ -4,6 +4,7 @@ import * as net from "net"
 
 export interface ServerOptions {
     address?: string
+    endpoint?: Endpoint
     server?: net.Server
 }
 export interface Server {
@@ -14,6 +15,7 @@ export interface Server {
 }
 export interface ClientOptions {
     address: string
+    endpoint?: Endpoint
     socket?: net.Socket
 }
 export interface Client {
@@ -25,15 +27,24 @@ export interface Connection extends ReadableWritablePair {
     closed: EventSource<void, this>
     close(): Promise<void>
 }
+export interface Endpoint {
+    channel(connection: ReadableWritablePair): Promise<void>
+}
 
 class TcpServer implements Server {
     #address: string
+    #endpoint?: Endpoint
     #server: net.Server
     #connection = createEmitter<Connection>("connection", this)
     constructor(options: ServerOptions = {}) {
         this.#address = options.address || "tcp://[::]"
+        this.#endpoint = options.endpoint
         this.#server = options.server || net.createServer()
-        this.#server.on("connection", (socket) => this.#connection.emit(new TcpConnection(socket)))
+        this.#server.on("connection", (socket) => {
+            const connection = new TcpConnection(socket)
+            this.#connection.emit(connection)
+            if (this.#endpoint) this.#endpoint.channel(connection)
+        })
     }
     get address() { return this.#address }
     get connection(): EventSource<Connection, this> { return this.#connection }
@@ -60,12 +71,18 @@ export function createServer(options: ServerOptions = {}): Server {
 
 class TcpClient implements Client {
     #address: string
+    #endpoint?: Endpoint
     #socket: net.Socket
     #connection = createEmitter<Connection>("connection", this)
     constructor(options: ClientOptions) {
         this.#address = options.address
+        this.#endpoint = options.endpoint
         this.#socket = options.socket || new net.Socket()
-        this.#socket.on("connect", () => this.#connection.emit(new TcpConnection(this.#socket)))
+        this.#socket.on("connect", () => {
+            const connection = new TcpConnection(this.#socket)
+            this.#connection.emit(connection)
+            if (this.#endpoint) this.#endpoint.channel(connection)
+        })
     }
     get address() { return this.#address }
     async close() {
