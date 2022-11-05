@@ -1,3 +1,4 @@
+import * as Transports from "../../transports"
 import * as Remotes from "../../remotes"
 import * as JSON from "../JSON"
 import { TextDecoderStream, TextEncoderStream, ReadableWritablePair, TransformStream } from "../../streams"
@@ -71,7 +72,7 @@ export function isMessage(value: any): value is Message {
         || isRequestMessage(value)
         || isResponseMessage(value)
 }
-export class Consumer extends Remotes.AbstractConsumer<RequestMessage, ResponseMessage> {
+export class Consumer extends Remotes.AbstractConsumer<RequestMessage, ResponseMessage> implements Transports.Endpoint {
     #identification = 0
     channel({ readable, writable }: ReadableWritablePair): Promise<void> {
         return readable
@@ -93,7 +94,7 @@ export class Consumer extends Remotes.AbstractConsumer<RequestMessage, ResponseM
         throw Error(`Unexpected response: ${response}`)
     }
 }
-export class Provider extends Remotes.AbstractProvider<RequestMessage, ResponseMessage> {
+export class Provider extends Remotes.AbstractProvider<RequestMessage, ResponseMessage> implements Transports.Endpoint {
     channel({ readable, writable }: ReadableWritablePair): Promise<void> {
         return readable
         .pipeThrough(new TextDecoderStream())
