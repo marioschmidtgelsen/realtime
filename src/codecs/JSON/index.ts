@@ -5,8 +5,12 @@ export class DecoderStream<T = any> extends TransformStream<string, T> {
 }
 class DecoderTransformer<T = any> implements Transformer<string, T> {
     transform(chunk: string, controller: TransformStreamDefaultController<T>) {
-        const decoded: T = JSON.parse(chunk)
-        controller.enqueue(decoded)
+        const splits = chunk.split("\n")
+        for (const split of splits) {
+            if (split == "") continue
+            const decoded: T = JSON.parse(split)
+            controller.enqueue(decoded)
+        }
     }
 }
 export class EncoderStream<T = any> extends TransformStream<T, string> {
@@ -14,7 +18,7 @@ export class EncoderStream<T = any> extends TransformStream<T, string> {
 }
 class EncoderTransformer<T = any> implements Transformer<T, string> {
     transform(chunk: T, controller: TransformStreamDefaultController<string>) {
-        const encoded = JSON.stringify(chunk)
+        const encoded = JSON.stringify(chunk).concat("\n")
         controller.enqueue(encoded)
     }
 }

@@ -2,24 +2,26 @@ import { createEmitter, EventSource } from "../events"
 import { ReadableWritablePair, ReadableStream, UnderlyingSource, ReadableStreamDefaultController, WritableStream, UnderlyingSink } from "../streams"
 import * as net from "net"
 
-export interface ServerOptions {
+export interface ServerOptions<T extends Endpoint> {
+    endpoint: T
     address?: string
-    endpoint?: Endpoint
     server?: net.Server
 }
-export interface Server {
+export interface Server<T extends Endpoint> {
     connection: EventSource<Connection, this>
     readonly address: string
+    readonly endpoint: T
     close(): Promise<void>
     listen(): Promise<string>
 }
-export interface ClientOptions {
+export interface ClientOptions<T extends Endpoint> {
     address: string
-    endpoint?: Endpoint
+    endpoint: T
     socket?: net.Socket
 }
-export interface Client {
+export interface Client<T extends Endpoint> {
     readonly address: string
+    readonly endpoint: T
     connection: EventSource<Connection, this>
     close(): Promise<void>
     connect(): Promise<Connection>
@@ -32,12 +34,12 @@ export interface Endpoint {
     channel(connection: ReadableWritablePair): Promise<void>
 }
 
-class TcpServer implements Server {
+class TcpServer<T extends Endpoint> implements Server<T> {
     #address: string
-    #endpoint?: Endpoint
+    #endpoint: T
     #server: net.Server
     #connection = createEmitter<Connection>("connection", this)
-    constructor(options: ServerOptions = {}) {
+    constructor(options: ServerOptions<T>) {
         this.#address = options.address || "tcp://[::]"
         this.#endpoint = options.endpoint
         this.#server = options.server || net.createServer()
@@ -49,6 +51,7 @@ class TcpServer implements Server {
     }
     get address() { return this.#address }
     get connection(): EventSource<Connection, this> { return this.#connection }
+    get endpoint() { return this.#endpoint }
     async close() {
         return new Promise<void>((resolve, reject) => this.#server.close(err => err ? reject(err.message) : resolve()))
     }
@@ -66,15 +69,15 @@ class TcpServer implements Server {
         else return `tcp://[${addressInfoOrString.address}]:${addressInfoOrString.port}`
     }
 }
-export function createServer(options: ServerOptions = {}): Server {
+export function createServer<T extends Endpoint>(options: ServerOptions<T>): Server<T> {
     return new TcpServer(options)
 }
-class TcpClient implements Client {
+class TcpClient<T extends Endpoint> implements Client<T> {
     #address: string
-    #endpoint?: Endpoint
+    #endpoint: T
     #socket: net.Socket
     #connection = createEmitter<Connection>("connection", this)
-    constructor(options: ClientOptions) {
+    constructor(options: ClientOptions<T>) {
         this.#address = options.address
         this.#endpoint = options.endpoint
         this.#socket = options.socket || new net.Socket()
@@ -95,11 +98,12 @@ class TcpClient implements Client {
             this.#socket.connect(this.getConnectOptions())
         })
     }
+    get endpoint() { return this.#endpoint }
     protected getConnectOptions() {
         return { port: parseInt(new URL(this.#address).port) }
     }
 }
-export function createClient(options: ClientOptions): Client {
+export function createClient<T extends Endpoint>(options: ClientOptions<T>): Client<T> {
     return new TcpClient(options)
 }
 class TcpConnection implements Connection {

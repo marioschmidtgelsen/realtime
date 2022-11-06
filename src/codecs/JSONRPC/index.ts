@@ -1,7 +1,8 @@
-import * as Transports from "../../transports"
-import * as Remotes from "../../remotes"
 import * as JSON from "../JSON"
-import { TextDecoderStream, TextEncoderStream, ReadableWritablePair, TransformStream } from "../../streams"
+import * as Remotes from "../../remotes"
+import * as Transports from "../../transports"
+import { TextDecoderStream, TextEncoderStream, ReadableWritablePair, ReadableStream } from "../../streams"
+import { createEmitter, EventEmitter, EventSource } from "../../events"
 
 export interface MessageHeader {
     readonly jsonrpc: '2.0'
@@ -15,10 +16,6 @@ export interface RequestMessage extends NotificationMessage {
 }
 export interface SuccessMessage extends MessageHeader {
     readonly result: any
-    readonly id: number | string
-}
-export interface FunctionMessage extends MessageHeader {
-    readonly method: string
     readonly id: number | string
 }
 export enum ErrorCode {
@@ -50,13 +47,9 @@ export function isRequestMessage(value: any): value is RequestMessage {
 }
 export function isSuccessMessage(value: any): value is SuccessMessage {
     return value.id && (typeof value.id == "number" || typeof value.id == "string")
+        && value.result
         && isMessageHeader(value)
         && !isErrorMessage(value)
-}
-export function isFunctionMessage(value: any): value is FunctionMessage {
-    return value.method && (typeof value.method == "string") && (value.method.length > 0)
-        && value.id && (typeof value.id == "number" || typeof value.id == "string")
-        && isMessageHeader(value)
 }
 export function isErrorMessage(value: any): value is ErrorMessage {
     return value.code && typeof value.code == "number"
@@ -72,42 +65,97 @@ export function isMessage(value: any): value is Message {
         || isRequestMessage(value)
         || isResponseMessage(value)
 }
-export class Consumer extends Remotes.AbstractConsumer<RequestMessage, ResponseMessage> implements Transports.Endpoint {
-    #identification = 0
-    channel({ readable, writable }: ReadableWritablePair): Promise<void> {
-        return readable
+export type MethodResultMessage = { jsonrpc: "2.0", method: string }
+export function isMethodResultMessage(value: any): value is MethodResultMessage {
+    return value.method && typeof value.method == "string" && value.method.length > 0 && isMessageHeader(value)
+}
+export function createEndpoint(consumer = Remotes.createConsumer(), provider = Remotes.createProvider()) {
+    return new Endpoint(consumer, provider)
+}
+
+class Endpoint implements Transports.Endpoint {
+    constructor(readonly consumer: Remotes.Consumer, readonly provider: Remotes.Provider) { }
+    async channel({ readable, writable }: ReadableWritablePair) {
+        const consumer = this.consumer
+        const provider = this.provider
+        const parameterTransformer = new BidirectionalParameterTransformer(consumer, provider)
+        const resultTransformer = new BidirectionalResultTransformer(consumer, provider)
+        readable
         .pipeThrough(new TextDecoderStream())
-        .pipeThrough(new JSON.DecoderStream<ResponseMessage>())
-        .pipeThrough(new TransformStream(this))
-        .pipeThrough(new JSON.EncoderStream<RequestMessage>())
+        .pipeThrough(new JSON.DecoderStream<Message>())
+        .pipeTo(new WritableStream({
+            write(chunk: Message) {
+                if (isSuccessMessage(chunk)) {
+                    const result = resultTransformer.visit(chunk.result)
+                    consumer.result.emit({ ...chunk, result })
+                } else if (isRequestMessage(chunk)) {
+                    const params = parameterTransformer.visit(chunk.params)
+                    provider.invoke({ id: chunk.id, method: chunk.method, params })
+                }
+            }
+        }))
+        new ReadableStream<Message>({
+            start(controller) {                
+                consumer.invocation.on(({ data }) => {
+                    const params = parameterTransformer.visit(data.params)
+                    controller.enqueue({ jsonrpc: "2.0", id: data.id, method: data.method, params })
+                })
+                provider.result.on(({ data }) => {
+                    const result = resultTransformer.visit(data.result)
+                    controller.enqueue({ jsonrpc: "2.0", id: data.id, result })
+                })
+            }
+        })
+        .pipeThrough(new JSON.EncoderStream())
         .pipeThrough(new TextEncoderStream())
         .pipeTo(writable)
-    }
-    protected generateIdentification(): number {
-        return ++this.#identification
-    }
-    protected encodeRequestMessage({ id, method, params }: Remotes.Invocation): RequestMessage {
-        return { jsonrpc: "2.0", id, method, params }
-    }
-    protected decodeResponseMessage(response: ResponseMessage): Remotes.Result {
-        if (isSuccessMessage(response)) return response
-        throw Error(`Unexpected response: ${response}`)
     }
 }
-export class Provider extends Remotes.AbstractProvider<RequestMessage, ResponseMessage> implements Transports.Endpoint {
-    channel({ readable, writable }: ReadableWritablePair): Promise<void> {
-        return readable
-        .pipeThrough(new TextDecoderStream())
-        .pipeThrough(new JSON.DecoderStream<RequestMessage>())
-        .pipeThrough(new TransformStream(this))
-        .pipeThrough(new JSON.EncoderStream<ResponseMessage>())
-        .pipeThrough(new TextEncoderStream())
-        .pipeTo(writable)
+class ObjectVisitor {
+    visit(value: any): any {
+        if (!value) return undefined
+        else if (Array.isArray(value)) return this.visitArray(value)
+        else if (typeof value == "function") return this.visitFunction(value)
+        else if (typeof value == "object") return this.visitObject(value)
+        else return value
     }
-    protected decodeRequestMessage({ id, method, params }: RequestMessage): Remotes.Invocation {
-        return { id, method, params }
+    visitArray<T extends any[]>(value: T): any {
+        return value.map(element => this.visit(element))
     }
-    protected encodeResponseMessage({ id, result }: Remotes.Result<any>): ResponseMessage {
-        return { jsonrpc: "2.0", id, result }
+    visitFunction<T extends (...args: any) => any>(value: T): any {
+        return value
+    }
+    visitObject<T extends object>(value: T): any {
+        return Object.fromEntries(Object.entries(value).map(([key, value]) => ([key, this.visit(value)])))
+    }
+}
+class BidirectionalParameterTransformer extends ObjectVisitor {
+    constructor(protected consumer: Remotes.Consumer, protected provider: Remotes.Provider) { super() }
+    visit(value: any): any {
+        if (!value) return undefined
+        else if (isMethodResultMessage(value)) return this.visitMethodResultMessage(value)
+        else return super.visit(value)
+    }
+    visitMethodResultMessage(value: MethodResultMessage) {
+        return (...params: any[]) => this.consumer.invoke(value.method, ...params)
+    }
+    visitFunction<T extends (...args: any) => any>(value: T): MethodResultMessage {
+        const method = this.provider.expose(value)
+        return { jsonrpc: "2.0", method } as MethodResultMessage
+    }
+}
+class BidirectionalResultTransformer extends ObjectVisitor {
+    constructor(protected consumer: Remotes.Consumer, protected provider: Remotes.Provider) { super() }
+    visit(value: any): any {
+        if (!value) return undefined
+        else if (isMethodResultMessage(value)) return this.visitMethodResultMessage(value)
+        else return super.visit(value)
+    }
+    visitMethodResultMessage(value: MethodResultMessage) {
+        return (...params: any[]) => this.consumer.invoke(value.method, ...params)
+    }
+    visitFunction<T extends (...args: any) => any>(value: T): MethodResultMessage {
+        const method = this.provider.expose(value)
+        return { jsonrpc: "2.0", method } as MethodResultMessage
     }
 }
