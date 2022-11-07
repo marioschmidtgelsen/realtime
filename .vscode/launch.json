@@ -7,6 +7,12 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Codecs/JSONRPC (test)",
+            "program": "${workspaceFolder}/src/codecs/JSONRPC/test/index.ts",
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Entities (test)",
             "program": "${workspaceFolder}/src/entities/test/index.ts",
         },

@@ -13,9 +13,9 @@ function tearUp() {
 async function testAttachFindMergeDetach() {
     const manager = tearUp()
     const attached: Array<AttachedEventData> = [], detached: Array<DetachedEventData> = [], merged: Array<MergedEventData> = []
-    manager.attached.on(({ data }) => attached.push(data))
-    manager.detached.on(({ data }) => detached.push(data))
-    manager.merged.on(({ data }) => merged.push(data))
+    manager.attached.on((data) => attached.push(data))
+    manager.detached.on((data) => detached.push(data))
+    manager.merged.on((data) => merged.push(data))
     manager.attach({ key: 42, foo: "bar" })
     assert.deepStrictEqual(attached, [{ entity: { key: 42, foo: "bar" }}])
     const entity = manager.find(42)
@@ -33,8 +33,8 @@ async function testSubscribeUnsubscribe() {
     const entity = manager.attach({ key: 42, foo: "foo" })
     const subscription = manager.subscribe(entity)
     const consumed: Array<MergedEventData | DetachedEventData> = []
-    subscription.detached.on(({ data }) => consumed.push(data))
-    subscription.merged.on(({ data }) => consumed.push(data))
+    subscription.detached.on((data) => consumed.push(data))
+    subscription.merged.on((data) => consumed.push(data))
     entity.foo = "bar"
     entity.foo = "baz"
     subscription.unsubscribe()

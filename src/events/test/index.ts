@@ -1,4 +1,4 @@
-import { createEmitter, EventSource, EventMessage, EventListener } from "../index"
+import { createEmitter, EventSource, EventListener } from "../index"
 import * as assert from "assert"
 
 async function test() {
@@ -8,22 +8,18 @@ async function test() {
         get message(): EventSource<string, this> { return this.#message }
         post(data: string) { this.#message.emit(data) }
     }
-    var emitted: Array<EventMessage<string, Channel>> = []
-    const listener: EventListener<string, Channel> = (data) => emitted.push(data)
+    var emitted: Array<string> = []
+    const listener: EventListener<string> = (data) => emitted.push(data)
     const general = new Channel("general")
     const help = new Channel("help")
     general.message.on(listener)
     help.message.on(listener)
     general.post("foo")
     assert.deepStrictEqual(emitted.length, 1)
-    assert.deepStrictEqual(emitted[0].name, "message")
-    assert.deepStrictEqual(emitted[0].source.name, "general")
-    assert.deepStrictEqual(emitted[0].data, "foo")
+    assert.deepStrictEqual(emitted[0], "foo")
     help.post("bar")
     assert.deepStrictEqual(emitted.length, 2)
-    assert.deepStrictEqual(emitted[1].name, "message")
-    assert.deepStrictEqual(emitted[1].source.name, "help")
-    assert.deepStrictEqual(emitted[1].data, "bar")
+    assert.deepStrictEqual(emitted[1], "bar")
     const deleted = help.message.off(listener)
     assert.ok(deleted)
     help.post("baz")

@@ -47,7 +47,6 @@ export function isRequestMessage(value: any): value is RequestMessage {
 }
 export function isSuccessMessage(value: any): value is SuccessMessage {
     return value.id && (typeof value.id == "number" || typeof value.id == "string")
-        && value.result
         && isMessageHeader(value)
         && !isErrorMessage(value)
 }
@@ -85,22 +84,23 @@ class Endpoint implements Transports.Endpoint {
         .pipeThrough(new JSON.DecoderStream<Message>())
         .pipeTo(new WritableStream({
             write(chunk: Message) {
-                if (isSuccessMessage(chunk)) {
-                    const result = resultTransformer.visit(chunk.result)
-                    consumer.result.emit({ ...chunk, result })
-                } else if (isRequestMessage(chunk)) {
+                if (isRequestMessage(chunk)) {
                     const params = parameterTransformer.visit(chunk.params)
                     provider.invoke({ id: chunk.id, method: chunk.method, params })
+                }
+                else if (isSuccessMessage(chunk)) {
+                    const result = resultTransformer.visit(chunk.result)
+                    consumer.result.emit({ ...chunk, result })
                 }
             }
         }))
         new ReadableStream<Message>({
             start(controller) {                
-                consumer.invocation.on(({ data }) => {
+                consumer.invocation.on((data) => {
                     const params = parameterTransformer.visit(data.params)
                     controller.enqueue({ jsonrpc: "2.0", id: data.id, method: data.method, params })
                 })
-                provider.result.on(({ data }) => {
+                provider.result.on((data) => {
                     const result = resultTransformer.visit(data.result)
                     controller.enqueue({ jsonrpc: "2.0", id: data.id, result })
                 })
@@ -126,7 +126,12 @@ class ObjectVisitor {
         return value
     }
     visitObject<T extends object>(value: T): any {
-        return Object.fromEntries(Object.entries(value).map(([key, value]) => ([key, this.visit(value)])))
+        const entries = []
+        for (const [propertyKey, propertyValue] of Object.entries(value)) {
+            const transform = this.visit(propertyValue)
+            entries.push([propertyKey, transform])
+        }
+        return Object.fromEntries(entries)
     }
 }
 class BidirectionalParameterTransformer extends ObjectVisitor {
@@ -134,7 +139,10 @@ class BidirectionalParameterTransformer extends ObjectVisitor {
     visit(value: any): any {
         if (!value) return undefined
         else if (isMethodResultMessage(value)) return this.visitMethodResultMessage(value)
-        else return super.visit(value)
+        else if (Array.isArray(value)) return this.visitArray(value)
+        else if (typeof value == "function") return this.visitFunction(value)
+        else if (typeof value == "object") return this.visitObject(value)
+        else return value
     }
     visitMethodResultMessage(value: MethodResultMessage) {
         return (...params: any[]) => this.consumer.invoke(value.method, ...params)
@@ -149,7 +157,10 @@ class BidirectionalResultTransformer extends ObjectVisitor {
     visit(value: any): any {
         if (!value) return undefined
         else if (isMethodResultMessage(value)) return this.visitMethodResultMessage(value)
-        else return super.visit(value)
+        else if (Array.isArray(value)) return this.visitArray(value)
+        else if (typeof value == "function") return this.visitFunction(value)
+        else if (typeof value == "object") return this.visitObject(value)
+        else return value
     }
     visitMethodResultMessage(value: MethodResultMessage) {
         return (...params: any[]) => this.consumer.invoke(value.method, ...params)

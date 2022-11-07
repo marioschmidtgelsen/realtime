@@ -1,38 +1,41 @@
 import * as JSONRPC from "./codecs/JSONRPC"
 import * as Transports from "./transports"
 
+interface Mock {
+    foo(): Promise<string>
+    bar(x?: string): Promise<string>
+    baz(f: () => string): Promise<string>
+}
+class Mock {
+    foo = async () => "foo"
+    bar = async (x?: string) => x || "bar"
+    baz = async (f: () => string) => f()
+}
+
 async function main() {
-    // Create the remote JSONRPC endpoint
-    const remote = JSONRPC.createEndpoint()
-    // Configure the remoting provider
-    remote.provider.expose(function foo() { return "foo" })
-    remote.provider.expose(function bar() { return () => "bar" })
-    remote.provider.expose((f: () => string) => f(), "baz")
-    // Create a TCP/IP transport server
-    const server = Transports.createServer({ address: "tcp://[::]", endpoint: remote })
+    // Create the server object
+    const mock = new Mock()
+    // Create a TCP/IP transport server with a bidirectional JSONRPC endpoint
+    const server = Transports.createServer({ address: "tcp://[::]", endpoint: JSONRPC.createEndpoint() })
     await server.listen()
+    // Expose the server object's methods on the JSONRPC provider-side
+    server.endpoint.provider.expose(mock, "mock")
     // Get server's listening address
     const address = server.address
-    // Create the local JSONRPC endpoint
-    const local = JSONRPC.createEndpoint()
-    // Configure the remoting provider
-    local.provider.expose(function cow() { return "moo" })
-    // Create a TCP/IP transport client
-    const client = Transports.createClient({ address, endpoint: local })
-    await client.connect()
-    // Remote invocation of a function on the server initiated by the client (client -> server)
-    console.info(await local.consumer.invoke("foo"))
-    // Remote invocation with callback function result (client -> server, client -> server)
-    const outer = await local.consumer.invoke("bar")
-    const inner = await outer()
-    console.info(inner)
-    // Remote invocation using a client function as the callback argument (client -> server -> client)
-    const result = await local.consumer.invoke("baz", () => "baz")
-    console.info(result)
-    // Remote invocation of a function executing on the client initiated by the server (server -> client)
-    console.info(await remote.consumer.invoke("cow"))
-    // Cleanup
-    await client.close()
+    {
+        // Create a TCP/IP transport client with a bidirectional JSONRPC endpoint
+        const client = Transports.createClient({ address, endpoint: JSONRPC.createEndpoint() })
+        await client.connect()
+        // Create a delegating proxy stub on the JSONRPC consumer-side
+        const mock = client.endpoint.consumer.proxy<Mock>("mock")
+        // Remote invocation
+        console.info(await mock.foo()) // client->server->client
+        console.info(await mock.bar("bar")) // client->server->client
+        console.info(await mock.baz(() => "baz")) // client->server->client->server->client
+        // Close transport client
+        await client.close()
+    }
+    // Close transport server
     await server.close()
 }
 

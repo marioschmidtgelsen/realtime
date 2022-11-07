@@ -1,4 +1,4 @@
-import { createEmitter, EventSource, EventMessage, EventListener } from "../events"
+import { createEmitter, EventSource, EventListener } from "../events"
 
 export type KeyGenerator = <T extends object>(entity: Partial<T>) => any
 export type EntityGenerator = <T extends object>(manager: EntityManager, entity: T, key: any) => T
@@ -131,15 +131,15 @@ class SubscriptionImpl implements Subscription {
     #detach: EventListener<DetachedEventData>
     #merge: EventListener<MergedEventData>
     constructor(readonly manager: EntityManager, readonly key: any) {
-        this.#merge = (ev: EventMessage<MergedEventData>) => {
-            if (ev.data.key == this.key) { 
-                this.#merged.emit(ev.data)
+        this.#merge = (data: MergedEventData) => {
+            if (data.key == this.key) { 
+                this.#merged.emit(data)
             }
         }
         manager.merged.on(this.#merge)
-        this.#detach = (ev: EventMessage<DetachedEventData>) => {
-            if (ev.data.key == this.key) {
-                this.#detached.emit(ev.data)
+        this.#detach = (data: DetachedEventData) => {
+            if (data.key == this.key) {
+                this.#detached.emit(data)
                 this.unsubscribe()
             }
         }

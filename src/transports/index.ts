@@ -94,7 +94,7 @@ class TcpClient<T extends Endpoint> implements Client<T> {
     get connection(): EventSource<Connection, this> { return this.#connection }
     async connect() {
         return new Promise<Connection>(resolve => {
-            this.#connection.once(({ data }) => resolve(data))
+            this.#connection.once((data) => resolve(data))
             this.#socket.connect(this.getConnectOptions())
         })
     }
