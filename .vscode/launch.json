@@ -7,32 +7,14 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Codecs/JSONRPC (test)",
-            "program": "${workspaceFolder}/src/codecs/JSONRPC/test/index.ts",
+            "name": "Test",
+            "program": "${workspaceFolder}/src/tests/runner.ts",
         },
         {
             "type": "node",
             "request": "launch",
-            "name": "Entities (test)",
-            "program": "${workspaceFolder}/src/entities/test/index.ts",
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "Events (test)",
-            "program": "${workspaceFolder}/src/events/test/index.ts",
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "Transports (test)",
-            "program": "${workspaceFolder}/src/transports/test/index.ts",
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "Launch",
-            "program": "${workspaceFolder}\\src\\index.ts",
+            "name": "Launch Program",
+            "program": "${workspaceFolder}/src/index.ts",
         }
     ]
 }

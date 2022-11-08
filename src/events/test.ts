@@ -1,7 +1,7 @@
-import { createEmitter, EventSource, EventListener } from "../index"
-import * as assert from "assert"
+import { createEmitter, EventSource, EventListener } from "./index"
+import { expect } from "../tests"
 
-async function test() {
+export async function testEventEmitter() {
     class Channel {
         #message = createEmitter("message", this)
         constructor(readonly name: string) { }
@@ -15,15 +15,11 @@ async function test() {
     general.message.on(listener)
     help.message.on(listener)
     general.post("foo")
-    assert.deepStrictEqual(emitted.length, 1)
-    assert.deepStrictEqual(emitted[0], "foo")
+    expect(emitted).equals(["foo"])
     help.post("bar")
-    assert.deepStrictEqual(emitted.length, 2)
-    assert.deepStrictEqual(emitted[1], "bar")
+    expect(emitted).equals(["foo", "bar"])
     const deleted = help.message.off(listener)
-    assert.ok(deleted)
+    expect(deleted).equals(true)
     help.post("baz")
-    assert.deepStrictEqual(emitted.length, 2)
+    expect(emitted.length).equals(2)
 }
-
-test().catch(console.error)

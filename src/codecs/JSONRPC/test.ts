@@ -1,18 +1,17 @@
-import * as JSONRPC from ".."
-import * as Transports from "../../../transports"
+import * as JSONRPC from "."
+import * as Transports from "../../transports"
 import { setTimeout } from "timers/promises"
-import { createEmitter } from "../../../events"
+import { createEmitter } from "../../events"
+import { expect } from "../../tests"
 
-async function testE2E() {
-    class Mock {
-        readonly foo = createEmitter<string>("foo", this)
-    }
+export async function testRemoteEventBinding() {
+    class Mock { readonly foo = createEmitter<string>("foo", this) }
     // Create the event source
     const mock = new Mock()
     // Create the remote JSONRPC endpoint
     const remote = JSONRPC.createEndpoint()
     // Expose remote event binding method
-    remote.provider.expose(mock.foo.bind().on, "mock.foo.on")
+    remote.provider.expose(mock.foo.on.bind(mock.foo), "mock.foo.on")
     // Create a TCP/IP transport server
     const server = Transports.createServer({ address: "tcp://[::]", endpoint: remote })
     await server.listen()
@@ -24,7 +23,8 @@ async function testE2E() {
     const client = Transports.createClient({ address, endpoint: local })
     await client.connect()
     // Bind local event listener to remote event
-    await client.endpoint.consumer.invoke("mock.foo.on", (data: any) => console.info(data))
+    const consumed = new Array<string>()
+    await client.endpoint.consumer.invoke("mock.foo.on", (data: any) => consumed.push(data))
     // Emit remote event
     mock.foo.emit("bar")
     // Wait for results to settle
@@ -32,6 +32,5 @@ async function testE2E() {
     // Cleanup
     await client.close()
     await server.close()
+    expect(consumed).equals(["bar"])
 }
-
-testE2E().catch(console.error)

@@ -7,10 +7,6 @@ export interface EventSource<T = any, S = any> {
     off(listener: EventListener<T>): boolean
 }
 export interface EventEmitter<T = any, S = any> extends EventSource<T, S> {
-    bind(): {
-        emit: (data: T) => void,
-        on: (listener: EventListener<T>) => void
-    }
     emit(data: T): void
 }
 export function createEmitter<T = any, S = any>(name: string, source: S): EventEmitter<T, S> {
