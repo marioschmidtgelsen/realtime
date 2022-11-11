@@ -6,9 +6,10 @@ async function main() {
     const runner = new Tests.Runner()
     const printer = new Tests.Printer()
     for await (const file of scanner.findFiles()) {
+        console.info(file.address.concat(":"))
         for await (const test of loader.importFunctions(file)) {
+            console.info(test.name)
             const result = await runner.runTest(test)
-            printer.printResult(result)
         }
     }
 }

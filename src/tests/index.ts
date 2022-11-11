@@ -10,12 +10,16 @@ export interface Reference {
 }
 export interface Expectation {
     equals(y: any): boolean
+    ok(): void
 }
 export function expect(x: any): Expectation {
     return {
         equals(y: any) {
-            assert(x, y)
+            assert.deepStrictEqual(x, y)
             return true
+        },
+        ok() {
+            assert.ok(x)
         }
     }
 }
