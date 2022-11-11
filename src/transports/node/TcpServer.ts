@@ -5,19 +5,19 @@ import * as net from "net"
 import { TcpConnection } from "./TcpConnection"
 
 Transports.Manager.registerServerFactory({
-    createServer<T extends Transports.Endpoint>(options: Transports.ServerOptions<T>): Transports.Server<T> {
+    createServer(options: Transports.ServerOptions): Transports.Server {
         const url = new URL(options.address)
         if (url.protocol != "tcp:") throw Error(`Unsupported protocol: '${url.protocol}'`)
         return new TcpServer(options)
     }
 })
 
-class TcpServer<T extends Transports.Endpoint> implements Transports.Server<T> {
+export class TcpServer implements Transports.Server {
     #address: string
-    #endpoint: T
+    #endpoint: Transports.Endpoint
     #server: net.Server
     #connection = Events.createEmitter<Transports.Connection>("connection", this)
-    constructor(options: Transports.ServerOptions<T>) {
+    constructor(options: Transports.ServerOptions) {
         this.#address = options.address || "tcp://[::]"
         this.#endpoint = options.endpoint
         this.#server = net.createServer()
@@ -34,7 +34,7 @@ class TcpServer<T extends Transports.Endpoint> implements Transports.Server<T> {
         return new Promise<void>((resolve, reject) => this.#server.close(err => err ? reject(err.message) : resolve()))
     }
     async listen() {
-        return new Promise<string>(resolve => this.#server.listen(this.getListenOptions(), () => resolve(this.#address = this.getListeningAddress()!)))
+        return new Promise<this>(resolve => this.#server.listen(this.getListenOptions(), () => { this.#address = this.getListeningAddress()!; resolve(this) }))
     }
     protected getListenOptions(): net.ListenOptions {
         const url = new URL(this.#address)

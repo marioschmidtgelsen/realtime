@@ -89,3 +89,11 @@ export class Printer {
     async printSummary() {
     }
 }
+export interface Logger {
+    debug(message: any, ...optionalParams: any[]): void
+}
+export class Logger {
+    static debug(message: any, ...optionalParams: any[]): void {
+        console.debug(message, ...optionalParams)
+    }
+}

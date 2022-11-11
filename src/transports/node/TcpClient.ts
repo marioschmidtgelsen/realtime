@@ -5,19 +5,19 @@ import * as net from "net"
 import { TcpConnection } from "./TcpConnection"
 
 Transports.Manager.registerClientFactory({
-    createClient<T extends Transports.Endpoint>(options: Transports.ClientOptions<T>): Transports.Client<T> {
+    createClient(options: Transports.ClientOptions): Transports.Client {
         const url = new URL(options.address)
         if (url.protocol != "tcp:") throw Error(`Unsupported protocol: '${url.protocol}'`)
         return new TcpClient(options)
     }
 })
 
-class TcpClient<T extends Transports.Endpoint> implements Transports.Client<T> {
+class TcpClient implements Transports.Client {
     #address: string
-    #endpoint: T
+    #endpoint: Transports.Endpoint
     #socket: net.Socket
     #connection = Events.createEmitter<Transports.Connection>("connection", this)
-    constructor(options: Transports.ClientOptions<T>) {
+    constructor(options: Transports.ClientOptions) {
         this.#address = options.address
         this.#endpoint = options.endpoint
         this.#socket = new net.Socket()
