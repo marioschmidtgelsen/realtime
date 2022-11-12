@@ -7,14 +7,14 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Test",
+            "name": "test",
             "program": "${workspaceFolder}/src/tests/runner.ts",
         },
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Program",
-            "program": "${workspaceFolder}/src/index.ts",
+            "name": "serve",
+            "program": "${workspaceFolder}/src/server.ts",
         }
     ]
 }

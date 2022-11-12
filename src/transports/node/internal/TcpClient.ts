@@ -1,5 +1,5 @@
-import * as Transports from ".."
-import * as Events from "../../events"
+import * as Transports from "../.."
+import * as Events from "../../../events"
 import * as net from "net"
 
 import { TcpConnection } from "./TcpConnection"

@@ -1,7 +1,7 @@
 import * as Events from "../events"
 import * as Streams from "../streams"
 
-export * as Http from "./Http"
+export * as Http from "./http"
 
 export interface ClientFactory {
     createClient(options: ClientOptions): Client
@@ -22,7 +22,7 @@ export interface Connection extends Streams.ReadableWritablePair<any, any> {
     close(): Promise<void>
 }
 export interface Endpoint<I = any, O = any> {
-    channel(streams: Streams.ReadableWritablePair<I, O>): Promise<void>
+    channel({ readable, writable }: Streams.ReadableWritablePair<I, O>): Promise<void>
 }
 export interface ServerOptions<I = any, O = any> {
     address: string

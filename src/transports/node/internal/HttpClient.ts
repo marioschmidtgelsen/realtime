@@ -1,6 +1,6 @@
-import * as Transports from ".."
-import * as Events from "../../events"
-import * as Streams from "../../streams"
+import * as Transports from "../.."
+import * as Events from "../../../events"
+import * as Streams from "../../../streams"
 import { TcpConnection } from "./TcpConnection"
 import * as http from "http"
 

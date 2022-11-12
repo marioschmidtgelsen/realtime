@@ -1,6 +1,6 @@
-import * as Transports from ".."
-import * as Streams from "../../streams"
-import * as Events from "../../events"
+import * as Transports from "../.."
+import * as Streams from "../../../streams"
+import * as Events from "../../../events"
 import * as net from "net"
 
 export class TcpConnection implements Transports.Connection {

@@ -1,9 +1,9 @@
 import * as Transports from ".."
 import * as Streams from "../../streams"
-import "./TcpClient"
-import "./TcpServer"
-import "./HttpClient"
-import "./HttpServer"
+import "./internal/TcpClient"
+import "./internal/TcpServer"
+import "./internal/HttpClient"
+import "./internal/HttpServer"
 import { expect } from "../../tests"
 
 export async function testTcpClientServer() {
@@ -20,7 +20,7 @@ export async function testTcpClientServer() {
         address: server.address,
         endpoint: {
             async channel(connection: Transports.Connection) {
-                const chunk = Buffer.from("PING")
+                const chunk = Buffer.from("foo")
                 connection.writable.getWriter().write(chunk)
                 const result = await connection.readable.getReader().read()
                 expect(!result.done).ok()
@@ -36,13 +36,13 @@ export async function testTcpClientServer() {
 export async function testHttpClientServer() {
     const mock = { foo: "bar" }
     const server = await Transports.Manager.createServer({
-        address: "http://[::]",
+        address: "http://[::]/",
         endpoint: {
             async channel({ readable, writable }) {
                 readable
                 .pipeThrough(new Streams.FilterStream(request => request.method == "GET" && request.url == "/"))
                 .pipeThrough(new Streams.TransformStream({
-                    async start(controller: Streams.TransformStreamDefaultController<any>) {
+                    async start(controller: Streams.TransformStreamDefaultController<Transports.Http.Server.HeaderResponse & any>) {
                         controller.enqueue({ statusCode: 200 })
                         controller.enqueue(Buffer.from(JSON.stringify(mock)))
                         controller.terminate()
@@ -54,13 +54,13 @@ export async function testHttpClientServer() {
     })
     .listen()
     await Transports.Manager.createClient({
-        address: server.address.concat("/"),
+        address: server.address,
         endpoint: {
             async channel({ readable, writable }) {
                 readable
                 .pipeThrough(new Streams.FilterStream(response => response.statusCode == 200))
                 .pipeThrough(new Streams.TransformStream({
-                    async transform(response: Transports.Http.IncomingMessage) {
+                    async transform(response: any) {
                         const decoder = new TextDecoder()
                         var text = ""; for await (const chunk of response) { text += decoder.decode(chunk) }
                         var data = JSON.parse(text)
